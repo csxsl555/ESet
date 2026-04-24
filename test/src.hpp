@@ -25,7 +25,7 @@ namespace sjtu {
             Color color;
             size_t sz; // Hint: Maintain subtree size to achieve O(log n) range() queries
 
-            // TODO: Complete the constructors and destructor for Node
+            // the constructors and destructor for Node
             template <typename... Args>
             Node(Node *nil_ptr, Args &&...args)
                 : left(nil_ptr), right(nil_ptr), parent(nil_ptr), color(RED), sz(1) {
@@ -115,9 +115,80 @@ namespace sjtu {
             return count;
         }
 
-        void leftRotate(Node *x);
-        void rightRotate(Node *y);
-        void insertFixup(Node *z);
+        void leftRotate(Node *x) {
+            Node *y = x->parent, *z = y->parent;
+            if (z->left == y)
+                z->left = x;
+            else
+                z->right = x;
+            y->parent = x;
+            y->right = x->left;
+            if (x->left != nil)
+                x->left->parent = y;
+            y->sz += -(x->sz) + x->left->sz;
+            x->left = y;
+            x->parent = z;
+            x->sz = y->sz + x->right->sz + 1;
+        }
+        void rightRotate(Node *x) {
+            Node *y = x->parent, *z = y->parent;
+            if (z->left == y)
+                z->left = x;
+            else
+                z->right = x;
+            y->parent = x;
+            y->left = x->right;
+            if (x->right != nil)
+                x->right->parent = y;
+            y->sz += -(x->sz) + x->right->sz;
+            x->right = y;
+            x->parent = z;
+            x->sz = y->sz + x->left->sz + 1;
+        }
+        void insertFixup(Node *z) {
+            while (z->parent->color == RED) {
+                Node *p = z->parent, *g = p->parent; // z's parent and grandparent
+                if (p == g->left) {
+                    Node *u = g->right; // z's uncle
+
+                    if (u->color == RED) { // Case 1
+                        p->color = BLACK;
+                        u->color = BLACK;
+                        g->color = RED;
+                        z = g;
+                    } else {
+                        if (z == p->right) { // Case 2
+                            leftRotate(z);
+                            swap(z, p);
+                        }
+                        // Case 3
+                        p->color = BLACK;
+                        g->color = RED;
+                        rightRotate(g);
+                    }
+                } else {
+                    Node *u = g->left; // z's uncle
+
+                    if (u->color == RED) { // Case 1
+                        p->color = BLACK;
+                        u->color = BLACK;
+                        g->color = RED;
+                        z = g;
+                    } else {
+                        if (z == p->left) { // Case 2
+                            rightRotate(z);
+                            swap(z, p);
+                        }
+                        // Case 3
+                        p->color = BLACK;
+                        g->color = RED;
+                        leftRotate(g);
+                    }
+                }
+            }
+
+            root->color = BLACK;
+        }
         void deleteFixup(Node *x);
         void transplant(Node *u, Node *v); // Replaces one subtree as a child of its parent with another subtree
 
@@ -259,9 +330,42 @@ namespace sjtu {
         iterator begin() const noexcept { return iterator(tree_minimum(root), this); }
         iterator end() const noexcept { return iterator(nil, this); }
 
-        // TODO: Pay attention to perfect forwarding and in-place construction
+        // Pay attention to perfect forwarding and in-place construction
         template <class... Args>
-        std::pair<iterator, bool> emplace(Args &&...args);
+        std::pair<iterator, bool> emplace(Args &&...args) {
+            Node z = new Node(nil, std::forward<Args>(args)...);
+            Node *x = root, *y = nil;
+            while (x != nil) {
+                y = x;
+                if (comp(*(z->data), *(x->data))) {
+                    x = x->left;
+                } else if (comp(*(x->data), *(z->data))) {
+                    x = x->right;
+                } else {
+                    delete z;
+                    return {iterator(x, this), false};
+                }
+            }
+
+            z->parent = y;
+            if (y == nil) {
+                root = z;
+            } else if (comp(*(z->data), *(y->data))) {
+                y->left = z;
+            } else {
+                y->right = z;
+            }
+
+            Node *cur = y;
+            while (cur != nil) {
+                ++cur->sz;
+                cur = cur->parent;
+            }
+
+            insertFixup(z);
+
+            return {iterator(z, this), true};
+        }
 
         size_t erase(const Key &key);
 
