@@ -5,12 +5,15 @@ BOOM :)
 #include <iostream>
 
 void test1() {
-    ESet<int> s, s1, s2, s3;
-    ESet<int>::iterator it = s.find(0);
+    sjtu::ESet<int> s, s1, s2, s3;
+    sjtu::ESet<int>::iterator it = s.find(0);
+    std::cout << "Start!" << std::endl;
     if (it != s.end()) std::cout << "Wrong!" << std::endl;
+    std::cout << "Pass 1" << std::endl;
     for (int i = 0; i < 10; i++) {
         s.emplace(i);
     }
+    std::cout << "Pass 2" << std::endl;
     do {
         auto it2 = it--;
         if (it2 == s.end())
@@ -21,29 +24,38 @@ void test1() {
         if (it != it2 || it2 != it3)
             std::cout << "Wrong!" << std::endl;
     } while (it != s.begin());
+    std::cout << "Pass 3" << std::endl;
 
     s = s = s;
     s1 = s = s2 = s3 = s;
     it = s.find(0);
     it = it = it;
-    ESet<int> s4 = s;
+    sjtu::ESet<int> s4 = s;
     s4.emplace(2333);
     if(s4.find(2333)==s4.end())std::cout<<"Wrong!"<<std::endl;
+    std::cout << "Pass 4" << std::endl;
     if(s.find(2333)!=s.end())std::cout<<"Wrong!"<<std::endl;
+    std::cout << "Pass 5" << std::endl;
     s3=std::move(s4);
-    ESet<int> s5=s3;
+    sjtu::ESet<int> s5=s3;
     if(s3.find(2333)==s3.end())std::cout<<"Wrong!"<<std::endl;
-    ESet<int> s6=std::move(s3);
+    std::cout << "Pass 6" << std::endl;
+    sjtu::ESet<int> s6=std::move(s3);
     s5.emplace(666);
     if(s6.find(666)!=s6.end())std::cout<<"Wrong!"<<std::endl;
+    std::cout << "Pass 7" << std::endl;
     s6=s5;
     if(s6.find(666)==s6.end())std::cout<<"Wrong!"<<std::endl;
+    std::cout << "Pass 8" << std::endl;
     if (s.size() != 10) std::cout << "Wrong!" << std::endl;
+    std::cout << "Pass 9" << std::endl;
     if (it != s.begin() || it != s.find(0) || it == s.end()
         || it == s1.begin() || it == s1.find(0))
         std::cout << "Wrong!" << std::endl;
+    std::cout << "Pass 10" << std::endl;
     s2.emplace(100);
     if (s2.find(100) == s2.end() || s3.find(100) != s3.end()) std::cout << "Wrong!" << std::endl;
+    std::cout << "Pass 11" << std::endl;
 
     while (it != s.end()) {
         auto it2 = it++;
@@ -55,6 +67,7 @@ void test1() {
         if (it != it2 || it2 != it3)
             std::cout << "Wrong!" << std::endl;
     }
+    std::cout << "Pass 12" << std::endl;
     for (int i = 1; i < 10; i += 2) {
         bool b = s.erase(i);
         if (!b)std::cout << "Wrong!" << std::endl;
@@ -62,7 +75,7 @@ void test1() {
     for (; it != s.end(); it++) {
         std::cout << *it << std::endl;
     }
-    if (typeid(s.find(0)) != typeid(ESet<int>::iterator))std::cout << "Wrong!" << std::endl;
+    if (typeid(s.find(0)) != typeid(sjtu::ESet<int>::iterator))std::cout << "Wrong!" << std::endl;
     if (typeid(*s.begin()) != typeid(const int))std::cout << "Wrong!" << std::endl;
 }
 

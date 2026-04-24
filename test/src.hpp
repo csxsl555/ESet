@@ -1,6 +1,7 @@
 #ifndef SJTU_ESET_HPP
 #define SJTU_ESET_HPP
 
+#include <algorithm>
 #include <cstddef>
 #include <stdexcept>
 #include <utility>
@@ -41,6 +42,7 @@ namespace sjtu {
         Node *root;
         Node *nil; // Hint: Use a single black sentinel node instead of nullptr
         Compare comp;
+        int _size;
 
         // ================== Internal Helpers & RBT Core Mechanisms ==================
 
@@ -158,8 +160,8 @@ namespace sjtu {
                         z = g;
                     } else {
                         if (z == p->right) { // Case 2
-                            leftRotate(z);
-                            swap(z, p);
+                            leftRotate(p);
+                            std::swap(z, p);
                         }
                         // Case 3
                         p->color = BLACK;
@@ -176,8 +178,8 @@ namespace sjtu {
                         z = g;
                     } else {
                         if (z == p->left) { // Case 2
-                            rightRotate(z);
-                            swap(z, p);
+                            rightRotate(p);
+                            std::swap(z, p);
                         }
                         // Case 3
                         p->color = BLACK;
@@ -283,6 +285,7 @@ namespace sjtu {
         ESet() {
             nil = new Node();
             root = nil;
+            _size = 0;
         }
         ~ESet() {
             destroy_tree(root);
@@ -325,7 +328,7 @@ namespace sjtu {
         }
 
         // ================== Core Interfaces ==================
-        size_t size() const noexcept { return root->sz; }
+        size_t size() const noexcept { return _size; }
 
         iterator begin() const noexcept { return iterator(tree_minimum(root), this); }
         iterator end() const noexcept { return iterator(nil, this); }
@@ -333,7 +336,7 @@ namespace sjtu {
         // Pay attention to perfect forwarding and in-place construction
         template <class... Args>
         std::pair<iterator, bool> emplace(Args &&...args) {
-            Node z = new Node(nil, std::forward<Args>(args)...);
+            Node *z = new Node(nil, std::forward<Args>(args)...);
             Node *x = root, *y = nil;
             while (x != nil) {
                 y = x;
@@ -347,6 +350,7 @@ namespace sjtu {
                 }
             }
 
+            ++_size;
             z->parent = y;
             if (y == nil) {
                 root = z;
@@ -367,15 +371,17 @@ namespace sjtu {
             return {iterator(z, this), true};
         }
 
-        size_t erase(const Key &key);
+        size_t erase(const Key &key) {
+            --_size;
+            return 0;
+        }
 
         iterator find(const Key &key) const {
-            iterator cur(*root, this);
-            while (cur->node != nil) {
-                Key *cur_value = cur->node->data;
-                if (is_equal(&cur_value, key))
-                    return iterator(cur->node, this);
-                else if (comp(&cur_value, key))
+            Node *cur = root;
+            while (cur != nil) {
+                if (is_equal(*(cur->data), key))
+                    return iterator(cur, this);
+                else if (comp(*(cur->data), key))
                     cur = cur->right;
                 else
                     cur = cur->left;
@@ -384,30 +390,28 @@ namespace sjtu {
         }
 
         iterator lower_bound(const Key &key) const {
-            iterator cur(*root, this), cur_ans = end();
-            while (cur->node != nil) {
-                Key *cur_value = cur->node->data;
-                if (is_equal(&cur_value, key))
-                    return iterator(cur->node, this);
-                else if (comp(&cur_value, key))
+            Node *cur = root, *cur_ans = nil;
+            while (cur != nil) {
+                if (is_equal(*(cur->data), key))
+                    return iterator(cur, this);
+                else if (comp(*(cur->data), key))
                     cur = cur->right;
                 else
                     cur_ans = cur, cur = cur->left;
             }
-            return iterator(cur_ans, this);
+            return cur_ans == nil ? end() : iterator(cur_ans, this);
         }
         iterator upper_bound(const Key &key) const {
-            iterator cur(*root, this), cur_ans = end();
-            while (cur->node != nil) {
-                Key *cur_value = cur->node->data;
-                if (is_equal(&cur_value, key))
+            Node *cur = root, *cur_ans = nil;
+            while (cur != nil) {
+                if (is_equal(*(cur->data), key))
                     cur = cur->left;
-                else if (comp(&cur_value, key))
+                else if (comp(*(cur->data), key))
                     cur = cur->right;
                 else
                     cur_ans = cur, cur = cur->left;
             }
-            return iterator(cur_ans, this);
+            return cur_ans == nil ? end() : iterator(cur_ans, this);
         }
 
         // O(log n) range query
@@ -418,5 +422,6 @@ namespace sjtu {
         }
     };
 } // namespace sjtu
+using namespace sjtu;
 
 #endif
