@@ -119,10 +119,13 @@ namespace sjtu {
 
         void leftRotate(Node *x) {
             Node *y = x->parent, *z = y->parent;
-            if (z->left == y)
+            if (z == nil) {
+                root = x;
+            } else if (z->left == y) {
                 z->left = x;
-            else
+            } else {
                 z->right = x;
+            }
             y->parent = x;
             y->right = x->left;
             if (x->left != nil)
@@ -134,10 +137,13 @@ namespace sjtu {
         }
         void rightRotate(Node *x) {
             Node *y = x->parent, *z = y->parent;
-            if (z->left == y)
+            if (z == nil) {
+                root = x;
+            } else if (z->left == y) {
                 z->left = x;
-            else
+            } else {
                 z->right = x;
+            }
             y->parent = x;
             y->left = x->right;
             if (x->right != nil)
@@ -160,7 +166,7 @@ namespace sjtu {
                         z = g;
                     } else {
                         if (z == p->right) { // Case 2
-                            leftRotate(p);
+                            leftRotate(z);
                             std::swap(z, p);
                         }
                         // Case 3
@@ -178,7 +184,7 @@ namespace sjtu {
                         z = g;
                     } else {
                         if (z == p->left) { // Case 2
-                            rightRotate(p);
+                            rightRotate(z);
                             std::swap(z, p);
                         }
                         // Case 3
