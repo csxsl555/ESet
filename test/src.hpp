@@ -46,7 +46,7 @@ namespace sjtu {
 
         // ================== Internal Helpers & RBT Core Mechanisms ==================
 
-        // TODO: Design any helper functions you need here
+        // helper functions
         // (e.g., finding min/max in a subtree, recursive copy/destroy, etc.)
 
         bool is_equal(const Key &a, const Key &b) const { return !comp(a, b) && !comp(b, a); }
@@ -119,6 +119,7 @@ namespace sjtu {
 
         void leftRotate(Node *x) {
             Node *y = x->parent, *z = y->parent;
+
             if (z == nil) {
                 root = x;
             } else if (z->left == y) {
@@ -126,17 +127,20 @@ namespace sjtu {
             } else {
                 z->right = x;
             }
+
             y->parent = x;
             y->right = x->left;
             if (x->left != nil)
                 x->left->parent = y;
             y->sz += -(x->sz) + x->left->sz;
+
             x->left = y;
             x->parent = z;
             x->sz = y->sz + x->right->sz + 1;
         }
         void rightRotate(Node *x) {
             Node *y = x->parent, *z = y->parent;
+
             if (z == nil) {
                 root = x;
             } else if (z->left == y) {
@@ -144,10 +148,12 @@ namespace sjtu {
             } else {
                 z->right = x;
             }
+
             y->parent = x;
             y->left = x->right;
             if (x->right != nil)
                 x->right->parent = y;
+
             y->sz += -(x->sz) + x->right->sz;
             x->right = y;
             x->parent = z;
@@ -197,8 +203,90 @@ namespace sjtu {
 
             root->color = BLACK;
         }
-        void deleteFixup(Node *x);
-        void transplant(Node *u, Node *v); // Replaces one subtree as a child of its parent with another subtree
+        void deleteFixup(Node *n) {
+            while (n->parent != nil && n->color == BLACK) {
+                Node *p = n->parent;
+
+                // ================= Left subtree =================
+                if (n == p->left) {
+                    Node *s = p->right;
+                    Node *c = s->left;
+                    Node *d = s->right;
+
+                    if (s->color == RED) { // Case 1
+                        leftRotate(s);
+                        std::swap(s->color, p->color);
+
+                        s = p->right;
+                        c = s->left;
+                        d = s->right;
+                    }
+
+                    if (c->color == BLACK && d->color == BLACK) { // Case 2
+                        s->color = RED;
+                        n = p;
+                    } else {
+                        if (c->color == RED && d->color == BLACK) { // Case 3
+                            rightRotate(c);
+                            std::swap(s->color, c->color);
+
+                            s = p->right;
+                            d = s->right;
+                        }
+                        // Case 4
+                        std::swap(s->color, p->color);
+                        d->color = BLACK;
+                        leftRotate(s);
+                        n = root;
+                    }
+                }
+                // ================= Reverse version =================
+                else {
+                    Node *s = p->left;
+                    Node *c = s->right;
+                    Node *d = s->left;
+
+                    if (s->color == RED) { // Case 1
+                        rightRotate(s);
+                        std::swap(s->color, p->color);
+
+                        s = p->left;
+                        c = s->right;
+                        d = s->left;
+                    }
+
+                    if (c->color == BLACK && d->color == BLACK) { // Case 2
+                        s->color = RED;
+                        n = p;
+                    } else {
+                        if (c->color == RED && d->color == BLACK) { // Case 3
+                            leftRotate(c);
+                            std::swap(s->color, c->color);
+
+                            s = p->left;
+                            d = s->left;
+                        }
+                        // Case 4
+                        std::swap(s->color, p->color);
+                        d->color = BLACK;
+                        rightRotate(s);
+                        n = root;
+                    }
+                }
+            }
+
+            n->color = BLACK;
+        }
+        void transplant(Node *u, Node *v) { // Replaces one subtree as a child of its parent with another subtree
+            if (u->parent == nil)
+                root = v;
+            else if (u == u->parent->left)
+                u->parent->left = v;
+            else
+                u->parent->right = v;
+            if (v != nil)
+                v->parent = u->parent;
+        }
 
     public:
         // ================== Iterators ==================
@@ -377,11 +465,6 @@ namespace sjtu {
             return {iterator(z, this), true};
         }
 
-        size_t erase(const Key &key) {
-            --_size;
-            return 0;
-        }
-
         iterator find(const Key &key) const {
             Node *cur = root;
             while (cur != nil) {
@@ -393,6 +476,45 @@ namespace sjtu {
                     cur = cur->left;
             }
             return end();
+        }
+
+        size_t erase(const Key &key) {
+            Node *node_to_remove;
+            iterator it = find(key);
+            if (it == end()) {
+                return 0;
+            }
+
+            --_size;
+            Node *z = it.node;
+            if (z->left != nil && z->right != nil) {
+                Node *y = tree_minimum(z->right);
+                std::swap(*(z->data), *(y->data));
+                node_to_remove = y;
+            } else {
+                node_to_remove = z;
+            }
+
+            Node *x; // the only son of node_to_remove
+            if (node_to_remove->left != nil) {
+                x = node_to_remove->left;
+            } else {
+                x = node_to_remove->right;
+            }
+
+            Node *cur = node_to_remove->parent;
+            while (cur != nil) {
+                --cur->sz;
+                cur = cur->parent;
+            }
+            transplant(node_to_remove, x);
+
+            Color original_color = node_to_remove->color;
+            delete node_to_remove;
+            if (original_color == BLACK)
+                deleteFixup(x);
+
+            return 1;
         }
 
         iterator lower_bound(const Key &key) const {
