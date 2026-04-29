@@ -87,6 +87,13 @@ namespace sjtu {
             return y;
         }
 
+        void update_size_upward(Node *x) {
+            while (x != nil) {
+                x->sz = x->left->sz + x->right->sz + 1;
+                x = x->parent;
+            }
+        }
+
         // count the elements that less than key
         size_t count_less(const Key &key) const {
             Node *curr = root;
@@ -178,7 +185,7 @@ namespace sjtu {
                         // Case 3
                         p->color = BLACK;
                         g->color = RED;
-                        rightRotate(g);
+                        rightRotate(p);
                     }
                 } else {
                     Node *u = g->left; // z's uncle
@@ -196,7 +203,7 @@ namespace sjtu {
                         // Case 3
                         p->color = BLACK;
                         g->color = RED;
-                        leftRotate(g);
+                        leftRotate(p);
                     }
                 }
             }
@@ -223,7 +230,8 @@ namespace sjtu {
                     }
 
                     if (c->color == BLACK && d->color == BLACK) { // Case 2
-                        s->color = RED;
+                        if (s != nil)
+                            s->color = RED;
                         n = p;
                     } else {
                         if (c->color == RED && d->color == BLACK) { // Case 3
@@ -256,7 +264,8 @@ namespace sjtu {
                     }
 
                     if (c->color == BLACK && d->color == BLACK) { // Case 2
-                        s->color = RED;
+                        if (s != nil)
+                            s->color = RED;
                         n = p;
                     } else {
                         if (c->color == RED && d->color == BLACK) { // Case 3
@@ -284,8 +293,7 @@ namespace sjtu {
                 u->parent->left = v;
             else
                 u->parent->right = v;
-            if (v != nil)
-                v->parent = u->parent;
+            v->parent = u->parent;
         }
 
     public:
@@ -389,6 +397,7 @@ namespace sjtu {
         ESet(const ESet &other) : comp(other.comp) {
             nil = new Node();
             root = copy_tree(other.root, nil, other.nil);
+            _size = other._size;
         }
         ESet &operator=(const ESet &other) {
             if (this == &other)
@@ -396,14 +405,16 @@ namespace sjtu {
             destroy_tree(root);
             comp = other.comp;
             root = copy_tree(other.root, nil, other.nil);
+            _size = other._size;
             return *this;
         }
 
         // Move semantics
-        ESet(ESet &&other) noexcept : root(other.root), nil(other.nil), comp(std::move(other.comp)) {
+        ESet(ESet &&other) noexcept : root(other.root), nil(other.nil), comp(std::move(other.comp)), _size(other._size) {
             // let other be the empty tree
             other.nil = new Node();
             other.root = other.nil;
+            other._size = 0;
         }
 
         ESet &operator=(ESet &&other) noexcept {
@@ -415,9 +426,11 @@ namespace sjtu {
             root = other.root;
             nil = other.nil;
             comp = std::move(other.comp);
+            _size = other._size;
 
             other.nil = new Node();
             other.root = other.nil;
+            other._size = 0;
             return *this;
         }
 
@@ -479,38 +492,48 @@ namespace sjtu {
         }
 
         size_t erase(const Key &key) {
-            Node *node_to_remove;
             iterator it = find(key);
             if (it == end()) {
                 return 0;
             }
-
             --_size;
             Node *z = it.node;
-            if (z->left != nil && z->right != nil) {
-                Node *y = tree_minimum(z->right);
-                std::swap(*(z->data), *(y->data));
-                node_to_remove = y;
+            Node *y = z;
+            Node *x = nil;
+            Color original_color = y->color;
+
+            if (z->left == nil) {
+                x = z->right;
+                transplant(z, z->right);
+                update_size_upward(x->parent);
+            } else if (z->right == nil) {
+                x = z->left;
+                transplant(z, z->left);
+                update_size_upward(x->parent);
             } else {
-                node_to_remove = z;
+                y = tree_minimum(z->right);
+                original_color = y->color;
+                x = y->right;
+                Node *old_parent = y->parent;
+
+                if (y->parent == z) {
+                    x->parent = y;
+                } else {
+                    transplant(y, y->right);
+                    y->right = z->right;
+                    y->right->parent = y;
+                }
+
+                transplant(z, y);
+                y->left = z->left;
+                y->left->parent = y;
+                y->color = z->color;
+                if (old_parent != z)
+                    update_size_upward(x->parent);
+                update_size_upward(y);
             }
 
-            Node *x; // the only son of node_to_remove
-            if (node_to_remove->left != nil) {
-                x = node_to_remove->left;
-            } else {
-                x = node_to_remove->right;
-            }
-
-            Node *cur = node_to_remove->parent;
-            while (cur != nil) {
-                --cur->sz;
-                cur = cur->parent;
-            }
-            transplant(node_to_remove, x);
-
-            Color original_color = node_to_remove->color;
-            delete node_to_remove;
+            delete z;
             if (original_color == BLACK)
                 deleteFixup(x);
 
@@ -532,12 +555,12 @@ namespace sjtu {
         iterator upper_bound(const Key &key) const {
             Node *cur = root, *cur_ans = nil;
             while (cur != nil) {
-                if (is_equal(*(cur->data), key))
+                if (comp(key, *(cur->data))) { // key < cur
+                    cur_ans = cur;
                     cur = cur->left;
-                else if (comp(*(cur->data), key))
+                } else { // key >= cur
                     cur = cur->right;
-                else
-                    cur_ans = cur, cur = cur->left;
+                }
             }
             return cur_ans == nil ? end() : iterator(cur_ans, this);
         }
